@@ -30,6 +30,7 @@ OPT=$(OPTIMIZATION)
 ## 默认编译到 /usr/local 下
 PREFIX?=/usr/local
 INSTALL_BIN=$(PREFIX)/bin
+INSTALL_OUT=$(PREFIX)/out
 INSTALL=install
 
 # Default allocator
@@ -246,6 +247,7 @@ valgrind:
 src/help.h:
 	@../utils/generate-command-help.rb > help.h
 
+# 增加内容 将生成o文件 移至 out 目录 并删除目录生成的文件
 install: all
 	@mkdir -p $(INSTALL_BIN)
 	$(REDIS_INSTALL) $(REDIS_SERVER_NAME) $(INSTALL_BIN)
@@ -253,3 +255,8 @@ install: all
 	$(REDIS_INSTALL) $(REDIS_CLI_NAME) $(INSTALL_BIN)
 	$(REDIS_INSTALL) $(REDIS_CHECK_DUMP_NAME) $(INSTALL_BIN)
 	$(REDIS_INSTALL) $(REDIS_CHECK_AOF_NAME) $(INSTALL_BIN)
+
+	rm -rf $(INSTALL_OUT)
+	@mkdir -p $(INSTALL_OUT)
+	cp -r $(REDIS_SERVER_NAME) $(REDIS_SENTINEL_NAME) $(REDIS_CLI_NAME) $(REDIS_BENCHMARK_NAME) $(REDIS_CHECK_DUMP_NAME) $(REDIS_CHECK_AOF_NAME) *.o *.gcda *.gcno *.gcov redis.info lcov-html $(INSTALL_OUT) 2> /dev/null || :
+	rm -rf $(REDIS_SERVER_NAME) $(REDIS_SENTINEL_NAME) $(REDIS_CLI_NAME) $(REDIS_BENCHMARK_NAME) $(REDIS_CHECK_DUMP_NAME) $(REDIS_CHECK_AOF_NAME) *.o *.gcda *.gcno *.gcov redis.info lcov-html
