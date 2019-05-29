@@ -12,9 +12,14 @@
 # Dependencies are stored in the Makefile.dep file. To rebuild this file
 # Just use 'make dep', but this is only needed by developers.
 
+# 生成版本信息 写到 release.h 文件
 release_hdr := $(shell sh -c './mkreleasehdr.sh')
+# 获取系统信息 获取失败 返回not
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
+# ?= 如值不存在 则赋值
 OPTIMIZATION?=-O2
+
+## 依赖目标 hiredis:c客户端 linenoise:命令行编辑库 lua
 DEPENDENCY_TARGETS=hiredis linenoise lua
 
 # Default settings
@@ -22,11 +27,13 @@ STD=-std=c99 -pedantic
 WARN=-Wall
 OPT=$(OPTIMIZATION)
 
+## 默认编译到 /usr/local 下
 PREFIX?=/usr/local
 INSTALL_BIN=$(PREFIX)/bin
 INSTALL=install
 
 # Default allocator
+# 使用不同的内存分配器
 ifeq ($(uname_S),Linux)
 	MALLOC=jemalloc
 else
@@ -61,6 +68,7 @@ ifeq ($(uname_S),SunOS)
 	FINAL_LIBS+= -ldl -lnsl -lsocket -lpthread
 else
 ifeq ($(uname_S),Darwin)
+	# 苹果系统 达尔文(Darwin)
 	# Darwin (nothing to do)
 else
 	# All the other OSes (notably Linux)
