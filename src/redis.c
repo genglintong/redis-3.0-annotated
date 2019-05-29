@@ -27,6 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+// 头文件
 #include "redis.h"
 #include "cluster.h"
 #include "slowlog.h"
@@ -68,6 +69,7 @@ double R_Zero, R_PosInf, R_NegInf, R_Nan;
 struct redisServer server; /* server global state */
 struct redisCommand *commandTable;
 
+// redis 命令结构体
 /* Our command table.
  *
  * 命令表
@@ -3935,6 +3937,7 @@ int main(int argc, char **argv) {
 
     /* We need to initialize our libraries, and the server configuration. */
     // 初始化库
+    // INIT_SETPROCTITLE_REPLACEMENT 重新初始化 设置进程
 #ifdef INIT_SETPROCTITLE_REPLACEMENT
     spt_init(argc, argv);
 #endif
