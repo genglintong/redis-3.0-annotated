@@ -2049,6 +2049,9 @@ void resetServerStats(void) {
     server.ops_sec_last_sample_ops = 0;
 }
 
+/**
+ * 初始化服务器 
+ */
 void initServer() {
     int j;
 
@@ -3775,15 +3778,26 @@ void createPidFile(void) {
     }
 }
 
+/*
+*  设置守护进程
+* 
+*/
 void daemonize(void) {
     int fd;
 
+    /*
+    * 一次调用 两次返回 父进程返回子进程PID 子进程返回0
+    * 父进程 直接返回 子进程继续执行
+    */
     if (fork() != 0) exit(0); /* parent exits */
+
+    // 设置子进程为新的会话组长 与登陆会话 脱离
     setsid(); /* create a new session */
 
     /* Every output goes to /dev/null. If Redis is daemonized but
      * the 'logfile' is set to 'stdout' in the configuration file
      * it will not log at all. */
+    // 将 输出 输入 错误输出 指向 dev/null
     if ((fd = open("/dev/null", O_RDWR, 0)) != -1) {
         dup2(fd, STDIN_FILENO);
         dup2(fd, STDOUT_FILENO);

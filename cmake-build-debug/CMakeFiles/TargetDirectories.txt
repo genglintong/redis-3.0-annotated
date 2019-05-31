@@ -1,0 +1,3 @@
+/Users/apple/genglintong/glt/redis-3.0-annotated/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/Users/apple/genglintong/glt/redis-3.0-annotated/cmake-build-debug/CMakeFiles/edit_cache.dir
+/Users/apple/genglintong/glt/redis-3.0-annotated/cmake-build-debug/CMakeFiles/redis-3.0-annotated.dir
