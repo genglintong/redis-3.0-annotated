@@ -65,17 +65,29 @@
 #define ZMALLOC_LIB "libc"
 #endif
 
+// 调用 zmalloc 申请size 个大小空间
 void *zmalloc(size_t size);
+// 调用 calloc 函数 申请空间
 void *zcalloc(size_t size);
+// 原内存 重新调整空间为 size 的大小
 void *zrealloc(void *ptr, size_t size);
+// 释放空间 并 更新 used_memory 的值
 void zfree(void *ptr);
+// 字符串 复制方法
 char *zstrdup(const char *s);
+// 获取当前已占用 的内存大小
 size_t zmalloc_used_memory(void);
+// 是否设置 线程安全模式
 void zmalloc_enable_thread_safeness(void);
+// 可自定义 设置内存溢出的处理方法
 void zmalloc_set_oom_handler(void (*oom_handler)(size_t));
+// 内存碎片 比例
 float zmalloc_get_fragmentation_ratio(size_t rss);
+// 获取 实际使用物理内存
 size_t zmalloc_get_rss(void);
+// 获取 私有脏数据
 size_t zmalloc_get_private_dirty(void);
+// 原始系统 free 释放方法
 void zlibc_free(void *ptr);
 
 #ifndef HAVE_MALLOC_SIZE

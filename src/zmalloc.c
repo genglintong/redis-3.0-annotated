@@ -44,6 +44,9 @@ void zlibc_free(void *ptr) {
 #include "config.h"
 #include "zmalloc.h"
 
+/*
+* PREFIX_SIZE 内存分配时 多分配空间 用于记录存放内存大小
+*/
 #ifdef HAVE_MALLOC_SIZE
 #define PREFIX_SIZE (0)
 #else
@@ -85,6 +88,7 @@ void zlibc_free(void *ptr) {
 
 #endif
 
+// 更新 已使用内存 大小 - 内存分配
 #define update_zmalloc_stat_alloc(__n) do { \
     size_t _n = (__n); \
     if (_n&(sizeof(long)-1)) _n += sizeof(long)-(_n&(sizeof(long)-1)); \
@@ -95,6 +99,7 @@ void zlibc_free(void *ptr) {
     } \
 } while(0)
 
+// 更新 已使用 内存大小 - 内存释放
 #define update_zmalloc_stat_free(__n) do { \
     size_t _n = (__n); \
     if (_n&(sizeof(long)-1)) _n += sizeof(long)-(_n&(sizeof(long)-1)); \
@@ -105,10 +110,14 @@ void zlibc_free(void *ptr) {
     } \
 } while(0)
 
+// 已使用 内存
 static size_t used_memory = 0;
+// 内存分配 安全模式
 static int zmalloc_thread_safe = 0;
+// 
 pthread_mutex_t used_memory_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+// 内存超出 提示 退出
 static void zmalloc_default_oom(size_t size) {
     fprintf(stderr, "zmalloc: Out of memory trying to allocate %zu bytes\n",
         size);
@@ -118,10 +127,14 @@ static void zmalloc_default_oom(size_t size) {
 
 static void (*zmalloc_oom_handler)(size_t) = zmalloc_default_oom;
 
+// 申请 size 大小空间
 void *zmalloc(size_t size) {
     void *ptr = malloc(size+PREFIX_SIZE);
 
+    // 内存分配失败 异常处理
     if (!ptr) zmalloc_oom_handler(size);
+
+    // 内存 统计
 #ifdef HAVE_MALLOC_SIZE
     update_zmalloc_stat_alloc(zmalloc_size(ptr));
     return ptr;
@@ -132,6 +145,9 @@ void *zmalloc(size_t size) {
 #endif
 }
 
+/*
+* malloc 分配 不做初始化 calloc 分配 初始化为 0
+*/
 void *zcalloc(size_t size) {
     void *ptr = calloc(1, size+PREFIX_SIZE);
 
@@ -146,6 +162,7 @@ void *zcalloc(size_t size) {
 #endif
 }
 
+// realloc 内存分配
 void *zrealloc(void *ptr, size_t size) {
 #ifndef HAVE_MALLOC_SIZE
     void *realptr;
@@ -189,6 +206,7 @@ size_t zmalloc_size(void *ptr) {
 }
 #endif
 
+// 释放内存
 void zfree(void *ptr) {
 #ifndef HAVE_MALLOC_SIZE
     void *realptr;
@@ -207,6 +225,7 @@ void zfree(void *ptr) {
 #endif
 }
 
+// 字符串 复制
 char *zstrdup(const char *s) {
     size_t l = strlen(s)+1;
     char *p = zmalloc(l);
@@ -215,11 +234,13 @@ char *zstrdup(const char *s) {
     return p;
 }
 
+// 获取 已使用的内存
 size_t zmalloc_used_memory(void) {
     size_t um;
 
     if (zmalloc_thread_safe) {
 #ifdef HAVE_ATOMIC
+        // 变量 原子操作 - 获取已使用内存
         um = __sync_add_and_fetch(&used_memory, 0);
 #else
         pthread_mutex_lock(&used_memory_mutex);
@@ -234,10 +255,12 @@ size_t zmalloc_used_memory(void) {
     return um;
 }
 
+// 设置 线程安全
 void zmalloc_enable_thread_safeness(void) {
     zmalloc_thread_safe = 1;
 }
 
+// 内存分配 抛异常
 void zmalloc_set_oom_handler(void (*oom_handler)(size_t)) {
     zmalloc_oom_handler = oom_handler;
 }

@@ -2118,12 +2118,15 @@ void initServer() {
         server.db[j].blocking_keys = dictCreate(&keylistDictType,NULL);
         server.db[j].ready_keys = dictCreate(&setDictType,NULL);
         server.db[j].watched_keys = dictCreate(&keylistDictType,NULL);
+        /*
+        * 驱逐池 (http://kriszhang.com/object-pool/#%E5%AF%B9%E8%B1%A1%E6%B1%A0%E7%9A%84%E6%94%BE%E9%80%90%E4%B8%8E%E9%A9%B1%E9%80%90)
+        **/
         server.db[j].eviction_pool = evictionPoolAlloc();
         server.db[j].id = j;
         server.db[j].avg_ttl = 0;
     }
 
-    // 创建 PUBSUB 相关结构
+    // 创建 PUBSUB 相关结构 - 发布订阅
     server.pubsub_channels = dictCreate(&keylistDictType,NULL);
     server.pubsub_patterns = listCreate();
     listSetFreeMethod(server.pubsub_patterns,freePubsubPattern);
