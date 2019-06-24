@@ -70,10 +70,12 @@ int anetNonBlock(char *err, int fd)
     /* Set the socket non-blocking.
      * Note that fcntl(2) for F_GETFL and F_SETFL can't be
      * interrupted by a signal. */
+    // 获得 fd 的特性
     if ((flags = fcntl(fd, F_GETFL)) == -1) {
         anetSetError(err, "fcntl(F_GETFL): %s", strerror(errno));
         return ANET_ERR;
     }
+    // 设置 fd 为非阻塞
     if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
         anetSetError(err, "fcntl(F_SETFL,O_NONBLOCK): %s", strerror(errno));
         return ANET_ERR;

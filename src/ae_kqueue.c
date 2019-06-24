@@ -105,6 +105,7 @@ static int aeApiPoll(aeEventLoop *eventLoop, struct timeval *tvp) {
     aeApiState *state = eventLoop->apidata;
     int retval, numevents = 0;
 
+    // 阻塞
     if (tvp != NULL) {
         struct timespec timeout;
         timeout.tv_sec = tvp->tv_sec;

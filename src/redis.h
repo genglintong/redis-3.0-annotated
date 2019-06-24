@@ -398,6 +398,7 @@ typedef long long mstime_t; /* millisecond time type. */
 #define REDIS_LRU_BITS 24
 #define REDIS_LRU_CLOCK_MAX ((1<<REDIS_LRU_BITS)-1) /* Max value of obj->lru */
 #define REDIS_LRU_CLOCK_RESOLUTION 1000 /* LRU clock resolution in ms */
+// 结构体 定义 位域 (https://blog.csdn.net/aoshilang2249/article/details/37819173)
 typedef struct redisObject {
 
     // 类型

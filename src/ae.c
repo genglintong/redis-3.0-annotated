@@ -365,6 +365,7 @@ static aeTimeEvent *aeSearchNearestTimer(aeEventLoop *eventLoop)
     aeTimeEvent *nearest = NULL;
 
     while(te) {
+        // 遍历 链表 获得最近时间事件
         if (!nearest || te->when_sec < nearest->when_sec ||
                 (te->when_sec == nearest->when_sec &&
                  te->when_ms < nearest->when_ms))
@@ -500,6 +501,7 @@ int aeProcessEvents(aeEventLoop *eventLoop, int flags)
     int processed = 0, numevents;
 
     /* Nothing to do? return ASAP */
+    // 不处理 文件 OR 时间 事件
     if (!(flags & AE_TIME_EVENTS) && !(flags & AE_FILE_EVENTS)) return 0;
 
     /* Note that we want call select() even if there are no
@@ -631,7 +633,7 @@ void aeMain(aeEventLoop *eventLoop) {
         if (eventLoop->beforesleep != NULL)
             eventLoop->beforesleep(eventLoop);
 
-        // 开始处理事件
+        // 开始处理事件 AE_ALL_EVENTS - 3
         aeProcessEvents(eventLoop, AE_ALL_EVENTS);
     }
 }

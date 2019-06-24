@@ -348,6 +348,7 @@ struct evictionPoolEntry *evictionPoolAlloc(void);
 
 /* Low level logging. To use only for very big messages, otherwise
  * redisLog() is to prefer. */
+// 日志函数 - 实际处理函数
 void redisLogRaw(int level, const char *msg) {
     const int syslogLevelMap[] = { LOG_DEBUG, LOG_INFO, LOG_NOTICE, LOG_WARNING };
     const char *c = ".-*#";
@@ -368,26 +369,33 @@ void redisLogRaw(int level, const char *msg) {
         int off;
         struct timeval tv;
 
+        // 获取 当前时区 时间
         gettimeofday(&tv,NULL);
         off = strftime(buf,sizeof(buf),"%d %b %H:%M:%S.",localtime(&tv.tv_sec));
         snprintf(buf+off,sizeof(buf)-off,"%03d",(int)tv.tv_usec/1000);
         fprintf(fp,"[%d] %s %c %s\n",(int)getpid(),buf,c[level],msg);
     }
+    // 刷新 写缓存
     fflush(fp);
 
     if (!log_to_stdout) fclose(fp);
+
+    // 写入系统日志
     if (server.syslog_enabled) syslog(syslogLevelMap[level], "%s", msg);
 }
 
 /* Like redisLogRaw() but with printf-alike support. This is the function that
  * is used across the code. The raw version is only used in order to dump
  * the INFO output on crash. */
+// redis 日志打印
 void redisLog(int level, const char *fmt, ...) {
     va_list ap;
     char msg[REDIS_MAX_LOGMSG_LEN];
 
+    // 可见的 日志等级
     if ((level&0xff) < server.verbosity) return;
 
+    // 获取 变参 (https://blog.csdn.net/mao834099514/article/details/52688196)
     va_start(ap, fmt);
     vsnprintf(msg, sizeof(msg), fmt, ap);
     va_end(ap);
@@ -856,12 +864,18 @@ int activeExpireCycleTryExpire(redisDb *db, dictEntry *de, long long now) {
  * 这个百分比由 REDIS_EXPIRELOOKUPS_TIME_PERC 定义。
  */
 
+/*
+*  事件 过期 循环
+*/
 void activeExpireCycle(int type) {
     /* This function has some global state in order to continue the work
      * incrementally across calls. */
     // 静态变量，用来累积函数连续执行时的数据
+    // 最近测试 的数据库
     static unsigned int current_db = 0; /* Last DB tested. */
+    // 上一次调用 事件超时 退出执行
     static int timelimit_exit = 0;      /* Time limit hit in previous call? */
+    // 上一次 快速模式 时间
     static long long last_fast_cycle = 0; /* When last fast cycle ran. */
 
     unsigned int j, iteration = 0;
@@ -1574,6 +1588,7 @@ void beforeSleep(struct aeEventLoop *eventLoop) {
     /* Run a fast expire cycle (the called function will return
      * ASAP if a fast cycle is not needed). */
     // 执行一次快速的主动过期检查
+    // 过期 开关打开 并且 该服务器 非主节点
     if (server.active_expire_enabled && server.masterhost == NULL)
         activeExpireCycle(ACTIVE_EXPIRE_CYCLE_FAST);
 
@@ -4069,7 +4084,7 @@ int main(int argc, char **argv) {
     #endif
         // 从 AOF 文件或者 RDB 文件中载入数据
         loadDataFromDisk();
-        // 启动集群？
+        // 判断 集群配置 是否正确
         if (server.cluster_enabled) {
             if (verifyClusterConfigWithData() == REDIS_ERR) {
                 redisLog(REDIS_WARNING,
@@ -4095,8 +4110,8 @@ int main(int argc, char **argv) {
     }
 
     // 运行事件处理器，一直到服务器关闭为止
-    aeSetBeforeSleepProc(server.el,beforeSleep);
-    aeMain(server.el);
+    aeSetBeforeSleepProc(server.el,beforeSleep); // 设置 事件循环 前置 函数 beforeSleep 
+    aeMain(server.el); // 主循环
 
     // 服务器关闭，停止事件循环
     aeDeleteEventLoop(server.el);

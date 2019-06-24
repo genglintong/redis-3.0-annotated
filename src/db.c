@@ -312,13 +312,17 @@ int dbDelete(redisDb *db, robj *key) {
 
 /* Prepare the string object stored at 'key' to be modified destructively
  * to implement commands like SETBIT or APPEND.
+ * 对string对象进行破坏性修改,为了实现 SETBIT 或者APPEND 命令
  *
  * An object is usually ready to be modified unless one of the two conditions
  * are true:
+ * 对象当符合下面至少一个条件时,不可以被修改
  *
  * 1) The object 'o' is shared (refcount > 1), we don't want to affect
  *    other users.
+ *    对象的引用计数 大于1 不做修改
  * 2) The object encoding is not "RAW".
+ *    对象编码 非原生编码
  *
  * If the object is found in one of the above conditions (or both) by the
  * function, an unshared / not-encoded copy of the string object is stored
@@ -338,8 +342,11 @@ int dbDelete(redisDb *db, robj *key) {
  * using an sdscat() call to append some data, or anything else.
  */
 robj *dbUnshareStringValue(redisDb *db, robj *key, robj *o) {
+    // 类似于 断言  判断为STRING 类型
     redisAssert(o->type == REDIS_STRING);
+    // 引用计数不为1 或者 非原生编码
     if (o->refcount != 1 || o->encoding != REDIS_ENCODING_RAW) {
+        // 解码
         robj *decoded = getDecodedObject(o);
         o = createRawStringObject(decoded->ptr, sdslen(decoded->ptr));
         decrRefCount(decoded);
@@ -473,6 +480,9 @@ void flushallCommand(redisClient *c) {
     server.dirty++;
 }
 
+/*
+ * 删除key del命令
+ */
 void delCommand(redisClient *c) {
     int deleted = 0, j;
 
@@ -502,6 +512,9 @@ void delCommand(redisClient *c) {
     addReplyLongLong(c,deleted);
 }
 
+/*
+ * 检查key 是否出现
+ * */
 void existsCommand(redisClient *c) {
 
     // 检查键是否已经过期，如果已过期的话，那么将它删除
@@ -516,6 +529,9 @@ void existsCommand(redisClient *c) {
     }
 }
 
+/* 
+ * 选择数据库
+ * */
 void selectCommand(redisClient *c) {
     long id;
 
@@ -537,6 +553,9 @@ void selectCommand(redisClient *c) {
     }
 }
 
+/*
+ * 随机选择 KEY 命令
+ * */
 void randomkeyCommand(redisClient *c) {
     robj *key;
 
@@ -550,6 +569,10 @@ void randomkeyCommand(redisClient *c) {
     decrRefCount(key);
 }
 
+/*
+ * keys  会遍历整个 库
+ * 严格的筛选只会减少对象的复制 和IO 传输
+ *  */
 void keysCommand(redisClient *c) {
     dictIterator *di;
     dictEntry *de;
@@ -589,7 +612,9 @@ void keysCommand(redisClient *c) {
 }
 
 /* This callback is used by scanGenericCommand in order to collect elements
- * returned by the dictionary iterator into a list. */
+ * returned by the dictionary iterator into a list. 
+ * scanGenericCommand 使用此回调 将字典迭代器返回的元素收集到列表中
+ * */
 void scanCallback(void *privdata, const dictEntry *de) {
     void **pd = (void**) privdata;
     list *keys = pd[0];
@@ -622,7 +647,9 @@ void scanCallback(void *privdata, const dictEntry *de) {
 /* Try to parse a SCAN cursor stored at object 'o':
  * if the cursor is valid, store it as unsigned integer into *cursor and
  * returns REDIS_OK. Otherwise return REDIS_ERR and send an error to the
- * client. */
+ * client. 
+ * 解析 游标参数
+ * */
 int parseScanCursorOrReply(redisClient *c, robj *o, unsigned long *cursor) {
     char *eptr;
 
@@ -686,11 +713,12 @@ void scanGenericCommand(redisClient *c, robj *o, unsigned long cursor) {
     i = (o == NULL) ? 2 : 3; /* Skip the key argument if needed. */
 
     /* Step 1: Parse options. */
-    // 分析选项参数
+    // 分析选项参数 - 参数是有序的
     while (i < c->argc) {
         j = c->argc - i;
 
         // COUNT <number>
+        // 获取一次遍历key 数目 - count 默认10
         if (!strcasecmp(c->argv[i]->ptr, "count") && j >= 2) {
             if (getLongFromObjectOrReply(c, c->argv[i+1], &count, NULL)
                 != REDIS_OK)
@@ -706,6 +734,7 @@ void scanGenericCommand(redisClient *c, robj *o, unsigned long cursor) {
             i += 2;
 
         // MATCH <pattern>
+        // 获取模式匹配 - use_pattern 是否使用匹配标识位
         } else if (!strcasecmp(c->argv[i]->ptr, "match") && j >= 2) {
             pat = c->argv[i+1]->ptr;
             patlen = sdslen(pat);
@@ -767,10 +796,12 @@ void scanGenericCommand(redisClient *c, robj *o, unsigned long cursor) {
         // 从而实现类型无关的数据提取操作
         privdata[0] = keys;
         privdata[1] = o;
+
+        // 迭代过程 结束条件 - 迭代为空 或者 达到所需长度
         do {
             cursor = dictScan(ht, cursor, scanCallback, privdata);
         } while (cursor && listLength(keys) < count);
-    } else if (o->type == REDIS_SET) {
+    } else if (o->type == REDIS_SET) { // 其他编码对象 表示数据量很小 可以全部返回
         int pos = 0;
         int64_t ll;
 
@@ -795,7 +826,9 @@ void scanGenericCommand(redisClient *c, robj *o, unsigned long cursor) {
         redisPanic("Not handled encoding in SCAN.");
     }
 
-    /* Step 3: Filter elements. */
+    /* Step 3: Filter elements. 
+    * 第三步 过滤元素
+    */
     node = listFirst(keys);
     while (node) {
         robj *kobj = listNodeValue(node);
@@ -817,7 +850,7 @@ void scanGenericCommand(redisClient *c, robj *o, unsigned long cursor) {
             }
         }
 
-        /* Filter element if it is an expired key. */
+        /* Filter element if it is an expired key。 过滤已过期的key*/
         if (!filter && o == NULL && expireIfNeeded(c->db, kobj)) filter = 1;
 
         /* Remove the element and its associted value if needed. */
@@ -1385,6 +1418,7 @@ void pttlCommand(redisClient *c) {
     ttlGenericCommand(c, 1);
 }
 
+// 将带有过期时间的 key 过期时间删除
 void persistCommand(redisClient *c) {
     dictEntry *de;
 

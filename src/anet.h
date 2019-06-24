@@ -43,26 +43,47 @@
 #define AF_LOCAL AF_UNIX
 #endif
 
+// tcp 默认连接
 int anetTcpConnect(char *err, char *addr, int port);
+// tcp 非阻塞连接
 int anetTcpNonBlockConnect(char *err, char *addr, int port);
+// tcp 非阻塞 绑定连接
 int anetTcpNonBlockBindConnect(char *err, char *addr, int port, char *source_addr);
+// tcp unix 默认连接
 int anetUnixConnect(char *err, char *path);
+// tcp unix 非阻塞连接
 int anetUnixNonBlockConnect(char *err, char *path);
+// 网络读取文件到buffer中
 int anetRead(int fd, char *buf, int count);
+// 解析
 int anetResolve(char *err, char *host, char *ipbuf, size_t ipbuf_len);
+// 解析IP 地址
 int anetResolveIP(char *err, char *host, char *ipbuf, size_t ipbuf_len);
+// tcp 服务
 int anetTcpServer(char *err, int port, char *bindaddr, int backlog);
+// tcp ipv6 服务器
 int anetTcp6Server(char *err, int port, char *bindaddr, int backlog);
+// tcp unix 服务
 int anetUnixServer(char *err, char *path, mode_t perm, int backlog);
+// tcp 接受连接
 int anetTcpAccept(char *err, int serversock, char *ip, size_t ip_len, int *port);
+// tcp unix 接受连接
 int anetUnixAccept(char *err, int serversock);
+// 从buffer中 写入文件
 int anetWrite(int fd, char *buf, int count);
+// 设置非阻塞
 int anetNonBlock(char *err, int fd);
+// 启用TCP 没有延迟
 int anetEnableTcpNoDelay(char *err, int fd);
+// 禁止TCP 没有延迟
 int anetDisableTcpNoDelay(char *err, int fd);
+// 设置TCP 活跃连接
 int anetTcpKeepAlive(char *err, int fd);
+// 
 int anetPeerToString(int fd, char *ip, size_t ip_len, int *port);
+// 保持 TCP 一直存活
 int anetKeepAlive(char *err, int fd, int interval);
+// 
 int anetSockName(int fd, char *ip, size_t ip_len, int *port);
 
 #endif

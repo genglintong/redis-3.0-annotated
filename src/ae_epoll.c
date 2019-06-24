@@ -151,10 +151,11 @@ static void aeApiDelEvent(aeEventLoop *eventLoop, int fd, int delmask) {
  * 获取可执行事件
  */
 static int aeApiPoll(aeEventLoop *eventLoop, struct timeval *tvp) {
+    // 多路复用 私有数据
     aeApiState *state = eventLoop->apidata;
     int retval, numevents = 0;
 
-    // 等待时间
+    // 等待时间- 返回触发时间数量
     retval = epoll_wait(state->epfd,state->events,eventLoop->setsize,
             tvp ? (tvp->tv_sec*1000 + tvp->tv_usec/1000) : -1);
 

@@ -1056,7 +1056,7 @@ dictEntry *dictGetRandomKey(dict *d)
 
     // 如果正在 rehash ，那么将 1 号哈希表也作为随机查找的目标
     if (dictIsRehashing(d)) {
-        // T = O(N)
+        // T = O(N) ?? 这个不是O(N) 只能说 最大O(N)
         do {
             h = random() % (d->ht[0].size+d->ht[1].size);
             he = (h >= d->ht[0].size) ? d->ht[1].table[h - d->ht[0].size] :
@@ -1066,6 +1066,7 @@ dictEntry *dictGetRandomKey(dict *d)
     } else {
         // T = O(N)
         do {
+            // 小优化 使用位操作
             h = random() & d->ht[0].sizemask;
             he = d->ht[0].table[h];
         } while(he == NULL);
@@ -1075,11 +1076,11 @@ dictEntry *dictGetRandomKey(dict *d)
      * list and we need to get a random element from the list.
      * The only sane way to do so is counting the elements and
      * select a random index. */
-    // 目前 he 已经指向一个非空的节点链表
+    // 目前 he 已经指向一个非空的节点链表 链表头
     // 程序将从这个链表随机返回一个节点
     listlen = 0;
     orighe = he;
-    // 计算节点数量, T = O(1)
+    // 计算节点数量, T = O(N)
     while(he) {
         he = he->next;
         listlen++;
@@ -1088,7 +1089,7 @@ dictEntry *dictGetRandomKey(dict *d)
     listele = random() % listlen;
     he = orighe;
     // 按索引查找节点
-    // T = O(1)
+    // T = O(N)
     while(listele--) he = he->next;
 
     // 返回随机节点
