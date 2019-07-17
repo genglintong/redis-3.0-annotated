@@ -274,6 +274,8 @@ int dictResize(dict *d)
  * size 参数不够大，或者 rehash 已经在进行时，返回 DICT_ERR 。
  *
  * 成功创建 0 号哈希表，或者 1 号哈希表时，返回 DICT_OK 。
+ * 
+ * 用于 哈希表 收缩和扩展
  *
  * T = O(N)
  */
@@ -400,7 +402,7 @@ int dictRehash(dict *d, int n) {
             // 计算新哈希表的哈希值，以及节点插入的索引位置
             h = dictHashKey(d, de->key) & d->ht[1].sizemask;
 
-            // 插入节点到新哈希表
+            // 插入节点到新哈希表 - 头插法
             de->next = d->ht[1].table[h];
             d->ht[1].table[h] = de;
 
@@ -534,6 +536,7 @@ dictEntry *dictAddRaw(dict *d, void *key)
     dictht *ht;
 
     // 如果条件允许的话，进行单步 rehash
+    // 正在 rehash 则进行单步 hash
     // T = O(1)
     if (dictIsRehashing(d)) _dictRehashStep(d);
 
@@ -1310,7 +1313,7 @@ unsigned long dictScan(dict *d,
     // 跳过空字典
     if (dictSize(d) == 0) return 0;
 
-    // 迭代只有一个哈希表的字典
+    // 迭代只有一个哈希表的字典 - 没有处于 rehash
     if (!dictIsRehashing(d)) {
 
         // 指向哈希表
@@ -1414,6 +1417,9 @@ static int _dictExpandIfNeeded(dict *d)
     // 1）字典已使用节点数和字典大小之间的比率接近 1：1
     //    并且 dict_can_resize 为真
     // 2）已使用节点数和字典大小之间的比率超过 dict_force_resize_ratio
+
+    // 可以写为 (d->ht[0].used >= d->ht[0].size && dict_can_resize) || 
+    // (d->ht[0].used >= d->ht[0].size && d->ht[0].used/d->ht[0].size > dict_force_resize_ratio)
     if (d->ht[0].used >= d->ht[0].size &&
         (dict_can_resize ||
          d->ht[0].used/d->ht[0].size > dict_force_resize_ratio))

@@ -423,6 +423,7 @@ list *listDup(list *orig)
 
         // 复制节点值到新节点
         if (copy->dup) {
+            // dup 函数 复制失败
             value = copy->dup(node->value);
             if (value == NULL) {
                 listRelease(copy);

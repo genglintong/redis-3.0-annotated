@@ -128,20 +128,36 @@ typedef struct list {
 #define listGetMatchMethod(l) ((l)->match)
 
 /* Prototypes */
+
+// 创建 链表
 list *listCreate(void);
+// 释放 链表
 void listRelease(list *list);
+// 增加节点 至 头节点 O(1)
 list *listAddNodeHead(list *list, void *value);
+// 增加节点 至 尾节点 O(1)
 list *listAddNodeTail(list *list, void *value);
+// 插入节点 至 某节点 之前/之后 O(1)
 list *listInsertNode(list *list, listNode *old_node, void *value, int after);
+// 删除节点 O(1)
 void listDelNode(list *list, listNode *node);
+// 获取迭代器
 listIter *listGetIterator(list *list, int direction);
+// 迭代器下一个节点
 listNode *listNext(listIter *iter);
+// 释放迭代器
 void listReleaseIterator(listIter *iter);
+// 复制链表 O(n)
 list *listDup(list *orig);
+// 搜索 Key 使用match 或者直接对比
 listNode *listSearchKey(list *list, void *key);
+// 获取 index 元素 正数头部开始 负数尾部开始
 listNode *listIndex(list *list, long index);
+// 将迭代器 重置 到 链表 头部 正序
 void listRewind(list *list, listIter *li);
+// 将迭代器 重置 到 链表 尾部 倒序
 void listRewindTail(list *list, listIter *li);
+// 将链表 尾节点 更换到头节点
 void listRotate(list *list);
 
 /* Directions for iterators 

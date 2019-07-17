@@ -60,20 +60,21 @@
 
 /*
  * 哈希表节点
+ * 24 字节
  */
 typedef struct dictEntry {
     
-    // 键
+    // 键 - 8字节
     void *key;
 
-    // 值
+    // 值 - 8字节
     union {
         void *val;
         uint64_t u64;
         int64_t s64;
     } v;
 
-    // 指向下个哈希表节点，形成链表
+    // 指向下个哈希表节点，形成链表 - 8 字节
     struct dictEntry *next;
 
 } dictEntry;
@@ -182,6 +183,7 @@ typedef struct dictIterator {
     //             从而防止指针丢失
     dictEntry *entry, *nextEntry;
 
+    // 非安全 迭代 做滥用 检测
     long long fingerprint; /* unsafe iterator fingerprint for misuse detection */
 } dictIterator;
 
@@ -194,6 +196,13 @@ typedef void (dictScanFunction)(void *privdata, const dictEntry *de);
 #define DICT_HT_INITIAL_SIZE     4
 
 /* ------------------------------- Macros ------------------------------------*/
+
+/**
+ * 函数 VS 宏定义
+ * 函数调用 会带来额外的开销
+ * 宏定义 会大幅度增加程序的长度
+ */
+
 // 释放给定字典节点的值
 #define dictFreeVal(d, entry) \
     if ((d)->type->valDestructor) \
@@ -252,34 +261,66 @@ typedef void (dictScanFunction)(void *privdata, const dictEntry *de);
 #define dictIsRehashing(ht) ((ht)->rehashidx != -1)
 
 /* API */
+// 集合创建 - 初始化 O(1)
 dict *dictCreate(dictType *type, void *privDataPtr);
+// 集合扩展 - 用于 集合 的 扩展和压缩
 int dictExpand(dict *d, unsigned long size);
+// 字典 添加 - 平均O(1) 最坏O(N)
 int dictAdd(dict *d, void *key, void *val);
+// 集合 添加 - 平均O(1) 最坏O(N)
 dictEntry *dictAddRaw(dict *d, void *key);
+// 字典 值更新 - O(1)
 int dictReplace(dict *d, void *key, void *val);
+// key 存在查找 返回 否则 插入返回
 dictEntry *dictReplaceRaw(dict *d, void *key);
+// 字典 集合 删除
 int dictDelete(dict *d, const void *key);
+// 字典 集合 删除
 int dictDeleteNoFree(dict *d, const void *key);
+// 删除 集合
 void dictRelease(dict *d);
+// 查找key O(1)
 dictEntry * dictFind(dict *d, const void *key);
+// 查找 key 对应的 value O(1)
 void *dictFetchValue(dict *d, const void *key);
+// 压缩字典 - 主要用于 数据库 key存储集合 节约内存
 int dictResize(dict *d);
+// 获取 字典迭代器
 dictIterator *dictGetIterator(dict *d);
+
+/*
+ * 安全迭代器: 可以修改 不可以 rehash - 使用安全迭代器个数 判断
+ * 非安全迭代器: 不可以修改 可以rehash  - 使用指纹判断是否改变
+ * 安全 VS 非安全 (https://juejin.im/post/5b73aaec518825612d644a12)
+ */
+// 获取 安全迭代器
 dictIterator *dictGetSafeIterator(dict *d);
+// 获取迭代器 下一个元素
 dictEntry *dictNext(dictIterator *iter);
+// 释放 迭代器 指针
 void dictReleaseIterator(dictIterator *iter);
+// 随机获取一个 key
 dictEntry *dictGetRandomKey(dict *d);
+// 随机获取 最大count个元素 存储在 des中
 int dictGetRandomKeys(dict *d, dictEntry **des, int count);
+// 打印出 字典状态
 void dictPrintStats(dict *d);
 unsigned int dictGenHashFunction(const void *key, int len);
 unsigned int dictGenCaseHashFunction(const unsigned char *buf, int len);
+// 清空 哈希
 void dictEmpty(dict *d, void(callback)(void*));
+//  开启自动 rehash
 void dictEnableResize(void);
+// 关闭 自动 rehash
 void dictDisableResize(void);
+// n步渐进式哈希 rehash
 int dictRehash(dict *d, int n);
+// 给定毫秒数内 rehash
 int dictRehashMilliseconds(dict *d, int ms);
+// hash 种子
 void dictSetHashFunctionSeed(unsigned int initval);
 unsigned int dictGetHashFunctionSeed(void);
+// scan - 再仔细研究
 unsigned long dictScan(dict *d, unsigned long v, dictScanFunction *fn, void *privdata);
 
 /* Hash table types */

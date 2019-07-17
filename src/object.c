@@ -54,6 +54,7 @@ robj *createObject(int type, void *ptr) {
 // 创建一个 REDIS_ENCODING_RAW 编码的字符对象
 // 对象的指针指向一个 sds 结构
 robj *createRawStringObject(char *ptr, size_t len) {
+    // 两次内存分配 一次对象 一次SDS
     return createObject(REDIS_STRING,sdsnewlen(ptr,len));
 }
 
@@ -64,6 +65,7 @@ robj *createRawStringObject(char *ptr, size_t len) {
 // 这个字符串对象中的 sds 会和字符串对象的 redisObject 结构一起分配
 // 因此这个字符也是不可修改的
 robj *createEmbeddedStringObject(char *ptr, size_t len) {
+    // 只分配一次内存
     robj *o = zmalloc(sizeof(robj)+sizeof(struct sdshdr)+len+1);
     struct sdshdr *sh = (void*)(o+1);
 
@@ -87,7 +89,7 @@ robj *createEmbeddedStringObject(char *ptr, size_t len) {
 /* Create a string object with EMBSTR encoding if it is smaller than
  * REIDS_ENCODING_EMBSTR_SIZE_LIMIT, otherwise the RAW encoding is
  * used.
- *
+ *  创建一个字符串对象 如果 长度小于 39 择使用 EMBSTR  编码 否则使用 原生编码 - SDS
  * The current limit of 39 is chosen so that the biggest string object
  * we allocate as EMBSTR will still fit into the 64 byte arena of jemalloc. */
 #define REDIS_ENCODING_EMBSTR_SIZE_LIMIT 39
@@ -108,7 +110,7 @@ robj *createStringObjectFromLongLong(long long value) {
 
     robj *o;
 
-    // value 的大小符合 REDIS 共享整数的范围
+    // value 的大小符合 REDIS 共享整数的范围 默认10000
     // 那么返回一个共享对象
     if (value >= 0 && value < REDIS_SHARED_INTEGERS) {
         incrRefCount(shared.integers[value]);
@@ -123,7 +125,7 @@ robj *createStringObjectFromLongLong(long long value) {
             o->encoding = REDIS_ENCODING_INT;
             o->ptr = (void*)((long)value);
 
-        // 值不能用 long 类型保存（long long 类型），将值转换为字符串，
+        // 值不能用 long 类型保存（long long 类型），将值转换为字符串， -- ??为什么ll 类型的传入
         // 并创建一个 REDIS_ENCODING_RAW 的字符串对象来保存值
         } else {
             o = createObject(REDIS_STRING,sdsfromlonglong(value));
@@ -156,9 +158,9 @@ robj *createStringObjectFromLongDouble(long double value) {
     // 移除尾部的 0 
     // 比如 3.1400000 将变成 3.14
     // 而 3.00000 将变成 3
-    if (strchr(buf,'.') != NULL) {
-        char *p = buf+len-1;
-        while(*p == '0') {
+    if (strchr(buf,'.') != NULL) { //判断是否有小数点
+        char *p = buf+len-1; // 指向尾指针
+        while(*p == '0') { // 去除0
             p--;
             len--;
         }
@@ -166,7 +168,7 @@ robj *createStringObjectFromLongDouble(long double value) {
         if (*p == '.') len--;
     }
 
-    // 创建对象
+    // 创建对象 - 与一般string 只是多了数据处理部分
     return createStringObject(buf,len);
 }
 
@@ -200,6 +202,7 @@ robj *dupStringObject(robj *o) {
         return createEmbeddedStringObject(o->ptr,sdslen(o->ptr));
 
     case REDIS_ENCODING_INT:
+        // 复制的共享对象 不再共享
         d = createObject(REDIS_STRING, NULL);
         d->encoding = REDIS_ENCODING_INT;
         d->ptr = o->ptr;
@@ -462,7 +465,7 @@ void decrRefCountVoid(void *o) {
  * It is useful in order to pass a new object to functions incrementing
  * the ref count of the received object. Example:
  *
- * 这个函数在将一个对象传入一个会增加引用计数的函数中时，非常有用。
+ * 这个函数在将一个对象传入一个会增加引用计数的函数中时，非常有用。 - 没明白? 有什么区别？
  * 就像这样：
  *
  *    functionThatWillIncrementRefCount(resetRefCount(CreateObject(...)));
@@ -531,6 +534,7 @@ robj *tryObjectEncoding(robj *o) {
      * in this function. Other types use encoded memory efficient
      * representations but are handled by the commands implementing
      * the type. */
+     // 断言 判断对象为 字符串类型
     redisAssertWithInfo(NULL,o,o->type == REDIS_STRING);
 
     /* We try some specialized encoding only for objects that are
@@ -542,20 +546,23 @@ robj *tryObjectEncoding(robj *o) {
     /* It's not safe to encode shared objects: shared objects can be shared
      * everywhere in the "object space" of Redis and may end in places where
      * they are not handled. We handle them only as values in the keyspace. */
-     // 不对共享对象进行编码
+     // 不对共享对象进行编码 - 共享对象 编码为 INT 早就已经返回了啊???
      if (o->refcount > 1) return o;
 
     /* Check if we can represent this string as a long integer.
      * Note that we are sure that a string larger than 21 chars is not
      * representable as a 32 nor 64 bit integer. */
     // 对字符串进行检查
-    // 只对长度小于或等于 21 字节，并且可以被解释为整数的字符串进行编码
+    // 只对长度小于或等于 21 字节，并且可以被解释为整数的字符串进行编码 即可以编码为INT
     len = sdslen(s);
     if (len <= 21 && string2l(s,len,&value)) {
         /* This object is encodable as a long. Try to use a shared object.
          * Note that we avoid using shared integers when maxmemory is used
          * because every object needs to have a private LRU field for the LRU
-         * algorithm to work well. */
+         * algorithm to work well. 
+         * 
+         * 这个对象可以编码为 长整型 使用共享内存(除非 设置最大内存 - 因为需要维护LRU)
+         * */
         if (server.maxmemory == 0 &&
             value >= 0 &&
             value < REDIS_SHARED_INTEGERS)
@@ -564,6 +571,7 @@ robj *tryObjectEncoding(robj *o) {
             incrRefCount(shared.integers[value]);
             return shared.integers[value];
         } else {
+            // 如果为 原生编码 则释放
             if (o->encoding == REDIS_ENCODING_RAW) sdsfree(o->ptr);
             o->encoding = REDIS_ENCODING_INT;
             o->ptr = (void*) value;
@@ -598,6 +606,7 @@ robj *tryObjectEncoding(robj *o) {
     if (o->encoding == REDIS_ENCODING_RAW &&
         sdsavail(s) > len/10)
     {
+        // 回收多余 SDS 空间
         o->ptr = sdsRemoveFreeSpace(o->ptr);
     }
 
@@ -1045,7 +1054,7 @@ robj *objectCommandLookupOrReply(redisClient *c, robj *key, robj *reply) {
 void objectCommand(redisClient *c) {
     robj *o;
 
-    // 返回对戏哪个的引用计数
+    // 返回对象的引用计数
     if (!strcasecmp(c->argv[1]->ptr,"refcount") && c->argc == 3) {
         if ((o = objectCommandLookupOrReply(c,c->argv[2],shared.nullbulk))
                 == NULL) return;

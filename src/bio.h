@@ -28,11 +28,17 @@
  */
 
 /* Exported API */
+// BIO 初始化
 void bioInit(void);
+// 创建一个新的BIO 任务
 void bioCreateBackgroundJob(int type, void *arg1, void *arg2, void *arg3);
+// 获取某一 BIO类型 待执行的 任务个数
 unsigned long long bioPendingJobsOfType(int type);
+
 void bioWaitPendingJobsLE(int type, unsigned long long num);
 time_t bioOlderJobOfType(int type);
+
+// 直接杀死所有后台进程
 void bioKillThreads(void);
 
 /* Background job opcodes */
